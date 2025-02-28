@@ -1,8 +1,10 @@
 ---
-title: "Group Challenge 1"
+title: "Group Challenges"
 format: revealjs
 editor: visual
 ---
+
+# Group Challenge 1
 
 ## DHS
 
@@ -38,112 +40,146 @@ The main dataset contains 29 covariates. One of these covariates is cluster_id, 
 
 -   Coordinate reference system (CRS: WGS84)
 
-
 ## Analysis of Covariates - Summary of Main Dataset and Cluster Metadata
 
 Although none of the metadata fields will be used for analysis, we must join on cluster_id to recover geographic locations.
 
 ## Household and Demographic Variables
 
-- Cluster ID from DHS data  
-- Household number within the cluster  
-- Rank of individual within household  
-- Number of household members  
-- Number of children under 5 in household  
-- Gender of household head  
+-   Cluster ID from DHS data\
+-   Household number within the cluster\
+-   Rank of individual within household\
+-   Number of household members\
+-   Number of children under 5 in household\
+-   Gender of household head
 
 ## Household and Demographic Variables
 
-- Urban or rural residence  
-- Wealth index category  
-- Survey weighting variable  
-- Stratification variable for survey design  
-- PSU identifier for survey design  
+-   Urban or rural residence\
+-   Wealth index category\
+-   Survey weighting variable\
+-   Stratification variable for survey design\
+-   PSU identifier for survey design
 
----
+------------------------------------------------------------------------
 
 ## Maternal Variables
 
-- Age of the mother  
-- Education level of the mother  
-- Occupation type  
-- Mother's height (cm)  
-- Mother's BMI  
-- Marital status of the mother  
-- Number of antenatal visits attended  
-- Diagnosed with high blood pressure  
-- Diagnosed with diabetes  
+-   Age of the mother\
+-   Education level of the mother\
+-   Occupation type\
+-   Mother's height (cm)\
+-   Mother's BMI\
+-   Marital status of the mother\
+-   Number of antenatal visits attended\
+-   Diagnosed with high blood pressure\
+-   Diagnosed with diabetes
 
----
+------------------------------------------------------------------------
 
 ## Child Variables
 
-- Birth order of the child  
-- Sex of child  
-- Source of birth weight measurement  
-- Birth weight in grams  
-- Categorized birth weight  
-- Date of birth
+-   Birth order of the child\
+-   Sex of child\
+-   Source of birth weight measurement\
+-   Birth weight in grams\
+-   Categorized birth weight\
+-   Date of birth
 
----
+------------------------------------------------------------------------
 
 ## Household Infrastructure Variables
 
-- Type of drinking water source  
-- Type of toilet facility  
-- Availability of electricity  
-- Floor material  
-- Type of cooking fuel  
+-   Type of drinking water source\
+-   Type of toilet facility\
+-   Availability of electricity\
+-   Floor material\
+-   Type of cooking fuel
 
 <!-- ## Analysis of Covariates - Household and Demographic Variables -->
 
 <!-- | Variable Name         | Description                                 | -->
+
 <!-- |-----------------------|---------------------------------------------| -->
+
 <!-- | clusterid             | Cluster ID from DHS data                    | -->
+
 <!-- | household_number      | Household number within the cluster         | -->
+
 <!-- | household_rank        | Rank of individual within household         | -->
+
 <!-- | household_members     | Number of household members                 | -->
+
 <!-- | household_under_5     | Number of children under 5 in household     | -->
+
 <!-- | household_head        | Gender of household head ("male", "female") | -->
+
 <!-- | type_of_residence     | Urban or rural residence ("urban", "rural") | -->
+
 <!-- | wealth_index          | Wealth index category                       | -->
+
 <!-- | survey_weight         | Survey weighting variable                   | -->
+
 <!-- | strata                | Stratification variable for survey design   | -->
+
 <!-- | primary_sampling_unit | PSU identifier for survey design            | -->
 
 <!-- ## Analysis of Covariates - Maternal Variables -->
 
 <!-- | Variable Name | Description | -->
+
 <!-- |---------------------------------------------|---------------------------| -->
+
 <!-- | mother_current_age | Age of the mother | -->
+
 <!-- | mother_education | Education level of the mother ("No education", "Primary", "Secondary or Higher") | -->
+
 <!-- | mother_occupation | Occupation type ("Manual labor", "Not working or non manual") | -->
+
 <!-- | mother_height | Mother's height (in cm) | -->
+
 <!-- | mother_bmi | Mother's BMI | -->
+
 <!-- | mother_marital_status | Marital status of the mother ("married/partnered", "no partner") | -->
+
 <!-- | antenatal_visits | Number of antenatal visits attended | -->
+
 <!-- | mother_hbp | Diagnosed with high blood pressure (Yes/No) | -->
+
 <!-- | mother_diabetes | Diagnosed with diabetes (Yes/No) | -->
 
 <!-- ## Analysis of Covariates - Child Variables -->
 
 <!-- | Variable Name | Description | -->
+
 <!-- |--------------------------------------------|----------------------------| -->
+
 <!-- | birth_order | Birth order of the child | -->
+
 <!-- | sex_of_child | Sex of child ("male", "female") | -->
+
 <!-- | birth_weight_type | Source of birth weight measurement ("mother recall", "written card") | -->
+
 <!-- | birth_weight | Birth weight in grams (NA if missing) | -->
+
 <!-- | birth_weight_cat | Categorized birth weight ("low" \< 2500g, "normal" 2500-4000g, "high" \> 4000g) | -->
+
 <!-- | birth_date | Date of birth (YYYY-MM-DD) | -->
 
 <!-- ## Analysis of Covariates - Household Infrastructure Variables -->
 
 <!-- | Variable Name | Description | -->
+
 <!-- |------------------------------------------------|------------------------| -->
+
 <!-- | household_water | Type of drinking water source (1 = "Improved", 0 = "Unimproved") | -->
+
 <!-- | household_toilet | Type of toilet facility ("Flush toilet", "Pit latrine", "No facility", "Other") | -->
+
 <!-- | household_electricity | Availability of electricity ("Yes", "No") | -->
+
 <!-- | household_floor | Floor material (1 = "Finished", 0 = "Unfinished") | -->
+
 <!-- | household_cooking_fuel | Type of cooking fuel (1 = "Clean", 0 = "Non clean") | -->
 
 ## Analysis of Covariates - Pairwise Correlation of Numeric Variables
@@ -191,18 +227,18 @@ acf(lm_model$residuals)  # Check for autocorrelation
 
 ## Spatial Domain
 
-- The study covers **Bangladesh**, with observations from **2,383 participants** distributed across geographic coordinates (latitude and longitude).  
-- Each participant’s location was masked by assigning them to a **cluster centroid** (via `clusterid`).  
-- To create pseudo-unique locations, small **i.i.d. Gaussian noise** (SD = 0.001 degrees) was added to latitude/longitude.  
-- Observations are **spatially indexed** using these randomized coordinates.
+-   The study covers **Bangladesh**, with observations from **2,383 participants** distributed across geographic coordinates (latitude and longitude).\
+-   Each participant’s location was masked by assigning them to a **cluster centroid** (via `clusterid`).\
+-   To create pseudo-unique locations, small **i.i.d. Gaussian noise** (SD = 0.001 degrees) was added to latitude/longitude.\
+-   Observations are **spatially indexed** using these randomized coordinates.
 
 ## Spatial Dependence
 
-- **Covariance decay with distance** is a reasonable assumption due to spatial dependence of birth weight on environmental factors (e.g., local temperature).  
-- **Spatial correlation** may arise from:  
-  - Shared environmental exposures (e.g., regional climate, pollution).  
-  - Socioeconomic conditions that vary geographically.  
-- Using **distance-based covariance** assumes that **mothers in close proximity experience similar environmental influences** affecting birth outcomes.
+-   **Covariance decay with distance** is a reasonable assumption due to spatial dependence of birth weight on environmental factors (e.g., local temperature).\
+-   **Spatial correlation** may arise from:
+    -   Shared environmental exposures (e.g., regional climate, pollution).\
+    -   Socioeconomic conditions that vary geographically.\
+-   Using **distance-based covariance** assumes that **mothers in close proximity experience similar environmental influences** affecting birth outcomes.
 
 ## Empirical Variogram
 
@@ -253,7 +289,7 @@ The empirical variogram for birth weight displays three key features:
 
 1.  A decrease in semivariance at very short distances (\<20 km), likely reflecting the artificial noise added to cluster centroids. This "dip" represents reduced variability within clusters due to the imposed randomization, as participants from the same original cluster are now treated as spatially distinct but still share similar environmental conditions.
 
-## Empirical Variogram 
+## Empirical Variogram
 
 2.  An increasing trend between 20–80 km, indicating spatial dependence. Rising semivariance with distance suggests that birth weights become less similar as geographic separation increases, consistent with spatial autocorrelation.
 
@@ -292,7 +328,9 @@ birth_projected <- st_transform(birth_sf, 32637)
 ```{r, echo = FALSE, results = 'hide'}
 bangladesh = st_read("bdg/bdg_cluster.shp")
 ```
+
 ## Cluster Locations
+
 ```{r}
 library(ggplot2)
 ggplot(data = bangladesh) +
@@ -301,10 +339,7 @@ ggplot(data = bangladesh) +
   theme_minimal()
 ```
 
-
-
-## Wealth Index 
-
+## Wealth Index
 
 ```{r}
 library(sf)
@@ -346,7 +381,7 @@ ggplot() +
 
 The data shows both large-scale trends (visible in heat maps) and local variation Urban-rural differences create discontinuities in the spatial pattern River systems in Bangladesh might create natural boundaries/corridors for spatial correlation The jittering adds some noise to the spatial relationships but shouldn't significantly affect large-scale patterns
 
-## Birth Weight 
+## Birth Weight
 
 ```{r}
 ggplot() +
@@ -384,6 +419,7 @@ ggplot() +
 ```
 
 ## Household Water Access
+
 ```{r}
 #Household Water Access
 ggplot() +
@@ -420,31 +456,42 @@ ggplot() +
         plot.title = element_text(size = 14, face = "bold"),
         plot.subtitle = element_text(size = 12))
 ```
+
 <!-- ## Wealth Index -->
 
 <!-- ```{r} -->
 
 <!-- library(ggplot2) -->
+
 <!-- library(scico)   -->
 
-
 <!-- ggplot() + -->
+
 <!--   geom_hex(data = birth_imp, -->
+
 <!--            aes(x = LONG_jitter, y = LAT_jitter, z = wealth_index), -->
+
 <!--            bins = 20,  -->
+
 <!--            stat = "summary_hex", -->
+
 <!--            fun = mean) + -->
+
 <!--   geom_sf(data = bangladesh, fill = NA, color = "white", size = 0.8) + -->
+
 <!--   scale_fill_viridis_c(name = "Wealth\nIndex") + -->
+
 <!--   theme_minimal() + -->
+
 <!--   labs(title = "Wealth Index Distribution in Bangladesh", -->
+
 <!--        x = "Longitude",  -->
+
 <!--        y = "Latitude") + -->
+
 <!--   coord_sf() -->
 
 <!-- ``` -->
-
-
 
 <!-- ### what is the spatial domain, its dimension, how are observations indexed in space? -->
 
@@ -459,13 +506,19 @@ ggplot() +
 <!-- #### Spatial Structure: -->
 
 <!-- ```{r} -->
+
 <!-- # Calculate empirical variogram -->
+
 <!-- variog <- variogram(birth_weight ~ 1, birth_projected, width = 20000) -->
 
 <!-- plot(variog, main = "Empirical Variogram of Birth Weight", -->
+
 <!--      xlab = "Distance (m)", ylab = "Semivariance", -->
+
 <!--      pch = 19, col = "blue",  -->
+
 <!--      ylim = c(450000, 525000)) -->
+
 <!-- ``` -->
 
 <!-- The empirical variogram shows: Clear spatial dependence Semivariance increases with distance: Range appears to be around 100-150km There's a notable nugget effect (non-zero y-intercept) -->
@@ -475,7 +528,6 @@ ggplot() +
 ## Possible Research Questions
 
 How do birth weights vary between urban and rural areas in Bangladesh? Is there a relationship between household wealth and birth weight outcomes? Do regions with better water access show improved birth weight outcomes? How does mother's education level correlate with birth weight across different regions?
-
 
 ## Possible Research Questions
 
@@ -488,3 +540,58 @@ How strongly does wealth index predict birth weight when controlling for spatial
 ## References
 
 National Institute of Population Research and Training (NIPORT), and ICF. (2020). *Bangladesh Demographic and Health Survey 2017-18*. Dhaka, Bangladesh, and Rockville, Maryland, USA: NIPORT and ICF.
+
+# Group Challenge 2
+
+```{r}
+load("gc2_results.RData")
+library(coda)
+theta.samples <- as.mcmc(m.1$p.theta.samples)
+sigma_samples <- theta.samples[, "sigma.sq"]
+tau_samples <- theta.samples[, "tau.sq"]
+phi_samples <- theta.samples[, "phi"]
+```
+
+## MCMC Results - Trace Plot of Spatial Process Parameter - Φ
+
+```{r}
+trace_phi <- traceplot(as.mcmc(phi_samples), main = "Trace Plot for Phi (Φ)")
+```
+
+## MCMC Results - Trace Plot of Spatial Process Parameters - σ²
+
+```{r}
+trace_sigma <- traceplot(as.mcmc(sigma_samples), main = "Trace Plot for Sigma (σ²)")
+```
+
+## MCMC Results - Trace Plot of Spatial Process Parameters - τ²
+
+```{r}
+trace_tau <- traceplot(as.mcmc(tau_samples), main = "Trace Plot for Tau (τ²)")
+```
+
+## Analysis of Trace Plots
+
+The trace plots for key spatial process parameters (Φ, σ², τ²) flatten out after around 300 iterations. This indicates that the MCMC chain has likely converged to the posterior distribution after the initial burn-in period. The first 300 iterations are considered burn-in, and the subsequent iterations reflect the true posterior. Additionally, the chains exhibit no trends or systematic movements, suggesting effective exploration of the parameter space.
+
+## MCMC Results - Autocorrelation of Spatial Process Parameter - Φ
+
+```{r}
+autocorr_phi <- autocorr.plot(as.mcmc(theta.samples[, "phi"]), main = "Autocorrelation for Phi (Φ)")
+```
+
+## MCMC Results - Autocorrelation of Spatial Process Parameter - σ²
+
+```{r}
+autocorr_sigma <- autocorr.plot(as.mcmc(theta.samples[, "sigma.sq"]), main = "Autocorrelation for Sigma (σ²)")
+```
+
+## MCMC Results - Autocorrelation of Spatial Process Parameter - τ²
+
+```{r}
+autocorr_tau <- autocorr.plot(as.mcmc(theta.samples[, "tau.sq"]), main = "Autocorrelation for Tau (τ²)")
+```
+
+## Analysis of Autocorrelation Plots
+
+The autocorrelation plots for Φ and σ² show similar trends, with both parameters exhibiting a slow decay in autocorrelation, indicating moderate dependence between successive samples. This suggests reasonable mixing for these parameters. However, for τ², the autocorrelation decays to a lower value of 0.25, indicating slower mixing and stronger dependence between samples. This slower decay for τ² suggests the chain may be struggling to effectively explore the parameter space for this parameter, potentially due to strong correlations with other parameters or insufficient mixing.
