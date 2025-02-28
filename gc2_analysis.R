@@ -56,3 +56,18 @@ m.1 <- spLM(y~X, coords=as.matrix(coords), starting=starting,
             tuning=tuning, priors=priors.1, cov.model=cov.model,
             n.samples=n.samples, verbose=verbose, n.report=n.report)
 
+###
+load("gc2_results.RData")
+
+library(coda)
+theta.samples <- as.mcmc(m.1$p.theta.samples)
+
+traceplot(theta.samples)  # Check if chains are mixing well
+
+densplot(theta.samples)   # Inspect posterior distributions
+
+autocorr.plot(theta.samples)
+
+effectiveSize(theta.samples)
+
+geweke.diag(theta.samples)
