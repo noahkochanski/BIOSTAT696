@@ -19,6 +19,8 @@ library(spBayes)
 set.seed(2025)
 ```
 
+
+
 # Group Challenge 1 {.center}
 
 ## DHS
@@ -38,10 +40,14 @@ Our data comes from the [Demographic Health Survey Program](https://dhsprogram.c
 
 -   For this particular survey, 2383 observations (births) were recorded across Bangladesh.
 
+
+
 ```{r, echo = FALSE}
 birth_imp = readRDS('data/input/birth_imp.RDS')
 cluster_locations = read.csv('data/input/cluster_locations.csv')
 ```
+
+
 
 ## Analysis of Covariates - Summary of Main Dataset and Cluster Metadata
 
@@ -199,6 +205,8 @@ Although none of the metadata fields will be used for analysis, we must join on 
 
 ## Analysis of Covariates - Pairwise Correlation of Numeric Variables
 
+
+
 ```{r, echo = FALSE}
 # Load necessary libraries
 library(dplyr)  # For data manipulation
@@ -219,7 +227,11 @@ cor_matrix <- cor(numeric_vars, use = "pairwise.complete.obs")
 ggcorrplot(cor_matrix, lab = TRUE) + theme(aspect.ratio = 0.5)
 ```
 
+
+
 ## Analysis of Covariates - Variance Inflation Factor
+
+
 
 ```{r, echo = FALSE}
 library(car)
@@ -234,11 +246,17 @@ vif_values <- vif(lm_model)
 print(vif_values)
 ```
 
+
+
 ## Analysis of Covariates - Autocorrelation
+
+
 
 ```{r, echo = FALSE}
 acf(lm_model$residuals)  # Check for autocorrelation
 ```
+
+
 
 ## Spatial Domain
 
@@ -256,6 +274,8 @@ acf(lm_model$residuals)  # Check for autocorrelation
 -   Using **distance-based covariance** assumes that **mothers in close proximity experience similar environmental influences** affecting birth outcomes.
 
 ## Empirical Variogram
+
+
 
 ```{r read, echo=FALSE}
 birth_imp <- readRDS("data/input/birth_imp.RDS")
@@ -298,6 +318,8 @@ axis(1, at = seq(0, max(variog$dist_km), by = 20),
 
 ```
 
+
+
 ## Empirical Variogram
 
 The empirical variogram for birth weight displays three key features:
@@ -313,6 +335,8 @@ The empirical variogram for birth weight displays three key features:
 ## Empirical Variogram
 
 Overall, the spatial pattern aligns with the hypothesis that environmental factors like temperature---which vary regionally---may contribute to geographic disparities in birth weight. Further investigation into the covariance structure and model diagnostics would strengthen these conclusions.
+
+
 
 ```{r,  echo = FALSE, results = 'hide'}
 birth_imp <- readRDS("data/input/birth_imp.RDS")
@@ -344,7 +368,11 @@ birth_projected <- st_transform(birth_sf, 32637)
 bangladesh = st_read("data/input/bdg/bdg_cluster.shp")
 ```
 
+
+
 ## Cluster Locations
+
+
 
 ```{r}
 library(ggplot2)
@@ -354,7 +382,11 @@ ggplot(data = bangladesh) +
   theme_minimal()
 ```
 
+
+
 ## Wealth Index
+
+
 
 ```{r}
 library(sf)
@@ -392,11 +424,15 @@ ggplot() +
   coord_sf()
 ```
 
+
+
 ## Wealth Index
 
 The data shows both large-scale trends (visible in heat maps) and local variation Urban-rural differences create discontinuities in the spatial pattern River systems in Bangladesh might create natural boundaries/corridors for spatial correlation The jittering adds some noise to the spatial relationships but shouldn't significantly affect large-scale patterns
 
 ## Birth Weight
+
+
 
 ```{r}
 ggplot() +
@@ -416,7 +452,11 @@ ggplot() +
   coord_sf()
 ```
 
+
+
 ## Maternal Education
+
+
 
 ```{r}
 #Mother's Education
@@ -433,7 +473,11 @@ ggplot() +
 
 ```
 
+
+
 ## Household Water Access
+
+
 
 ```{r}
 #Household Water Access
@@ -450,7 +494,11 @@ ggplot() +
 
 ```
 
+
+
 ## Residence Type and Birth Weight
+
+
 
 ```{r}
 # Residence Type and Birth Weight
@@ -471,6 +519,8 @@ ggplot() +
         plot.title = element_text(size = 14, face = "bold"),
         plot.subtitle = element_text(size = 12))
 ```
+
+
 
 <!-- ## Wealth Index -->
 
@@ -560,6 +610,8 @@ National Institute of Population Research and Training (NIPORT), and ICF. (2020)
 
 ## Loading Data {.smaller}
 
+
+
 ```{r}
 birth_imp <- readRDS('data/input/birth_imp.RDS') # Load the imputed birth data
 cluster_locations <- read_csv('data/input/cluster_locations.csv') %>% 
@@ -567,6 +619,8 @@ cluster_locations <- read_csv('data/input/cluster_locations.csv') %>%
   select(clusterid, LATNUM, LONGNUM)
 reg_data <- left_join(birth_imp, cluster_locations)
 ```
+
+
 
 ``` r
 birth_imp <- readRDS('data/input/birth_imp.RDS') # Load the imputed birth data
@@ -582,10 +636,14 @@ The two datasets are merged using left_join(), ensuring that birth-related recor
 
 ## Standard Linear Regression {.smaller}
 
+
+
 ```{r}
 linear_reg_notspatial <- lm(birth_weight ~ birth_weight_type + mother_bmi + sex_of_child + mother_current_age, data = reg_data)
 summary(linear_reg_notspatial)
 ```
+
+
 
 ## Standard Linear Regression {.smaller}
 
@@ -598,6 +656,8 @@ Male children weigh about 107 grams more than females on average. The effect of 
 The variable birth weight type (written card vs. mother recall) has an estimated difference of -90 grams but is not statistically significant, indicating no strong evidence that recorded birth weight type impacts the outcome.
 
 ## Residual Visualization {.smaller}
+
+
 
 ```{r}
 library(tidyverse)
@@ -637,11 +697,15 @@ ggplot() +
 
 ```
 
+
+
 ## Residual Visualization {.smaller}
 
 This scatter plot visualizes the residuals from the linear regression model across spatial coordinates (LATNUM and LONGNUM). Each point represents a geographic location, and the color gradient indicates the magnitude of the residuals. Yellow/Green regions represent positive residuals, where the model underestimates birth weight. Blue/Purple regions represent negative residuals, where the model overestimates birth weight. Near-zero residuals (mid-range colors) indicate areas where the model's predictions are more accurate. Base on this scatter plot, clusters of similar residual values (e.g., regions where residuals are predominantly positive or negative) suggest that there is a spatial correlation in the errors. This indicates that the linear model may not fully account for spatial dependencies in the data.
 
 ## Empirical Variogram {.smaller}
+
+
 
 ```{r}
 library(gstat)
@@ -655,6 +719,8 @@ plot(variogram_resid, main = "Empirical Variogram of Residuals",
      ylim = c(lower_limit, upper_limit))
 ```
 
+
+
 ## Empirical Variogram {.smaller}
 
 The empirical variogram of residuals reveals the spatial dependence structure of unexplained variation after fitting the linear model. The increasing trend in semivariance at short distances (within 50 kilometers) suggests positive spatial autocorrelation, indicating that residuals from nearby locations tend to be similar. The lack of a clear sill suggests that spatial dependence persists beyond the observed range or that non-stationarity may be present. Fluctuations in the variogram could be due to noise, uneven spatial sampling, or anisotropy in the spatial process.
@@ -663,12 +729,16 @@ The empirical variogram of residuals reveals the spatial dependence structure of
 
 ### Preparing Data
 
+
+
 ```{r}
 X <- reg_data %>% select(birth_weight_type, mother_bmi, sex_of_child, mother_current_age) %>% as.matrix()
 y <- reg_data %>% select(birth_weight) %>% as.matrix()
 p <- ncol(X)
 n <- nrow(X)
 ```
+
+
 
 ``` r
 X <- reg_data %>% select(birth_weight_type, mother_bmi, sex_of_child, mother_current_age) %>% as.matrix()
@@ -681,10 +751,14 @@ The predictor variables are extracted into a matrix X, while the response variab
 
 ### Add Random Noise to Coordinates
 
+
+
 ```{r}
 coords <- cluster_locations %>% select(LATNUM, LONGNUM) 
 coords <- coords + rnorm(n = p*n)
 ```
+
+
 
 ``` r
 coords <- cluster_locations %>% select(LATNUM, LONGNUM) 
@@ -697,11 +771,15 @@ Random noise is added to the coordinates of each cluster. This slight perturbati
 
 ### Intialize MCMC
 
+
+
 ```{r}
 n.samples <- 2000 # Number of MCMC iterations
 starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=1) #Inital Value for MCMC
 tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1) #Defining Tuning Parameters
 ```
+
+
 
 ``` r
 n.samples <- 2000 # Number of MCMC iterations
@@ -715,6 +793,8 @@ The number of samples for the Markov Chain Monte Carlo (MCMC) process is set to 
 
 ### Prior Distribution & Covariance model
 
+
+
 ```{r}
 priors.1 <- list("beta.Norm"=list(rep(0,p), diag(1000,p)),
                  "phi.Unif"=c(0.1, 3/0.1), 
@@ -725,6 +805,8 @@ priors.1 <- list("beta.Norm"=list(rep(0,p), diag(1000,p)),
 ```{r}
 cov.model <- "exponential"    
 ```
+
+
 
 ``` r
 priors.1 <- list("beta.Norm"=list(rep(0,p), diag(1000,p)),
@@ -751,6 +833,8 @@ m.1 <- spLM(y~X, coords=as.matrix(coords), starting=starting,
 summary(m.1$p.theta.samples) #Summarize Posterior Distribution
 ```
 
+
+
 ```{r}
 n.report <- 500
 verbose <- TRUE
@@ -768,11 +852,15 @@ load("data/input/gc2_results.RData") # Load m.1 model result
 summary(m.1$p.theta.samples) #Summarize Posterior Distribution
 ```
 
+
+
 ## Bayesian Regression {.smaller}
 
 The posterior estimates from the spatial Bayesian linear model (spLM) indicate strong spatial dependence in birth weight variations. The posterior mean for the spatial variance (sigma.sq = 754,300) suggests that a significant portion of the variability is explained by spatial factors, with a relatively narrow credible interval (\[711,300, 815,600\]), confirming stability in the estimates. The nugget variance (tau.sq = 0.068), representing measurement error or unstructured variability, is relatively low, suggesting minimal noise in the observations. The range parameter (phi ≈ 29.63), with a tight 95% credible interval (\[26.51, 29.98\]), indicates a strong spatial correlation, meaning birth weights in locations within this range exhibit similar trends.
 
 ## Bayesian Regression {.smaller}
+
+
 
 ```{r}
 
@@ -783,27 +871,41 @@ tau_samples <- theta.samples[, "tau.sq"]
 phi_samples <- theta.samples[, "phi"]
 ```
 
+
+
 ### MCMC Results - Trace Plot of Spatial Process Parameter - Φ
+
+
 
 ```{r}
 trace_phi <- traceplot(as.mcmc(phi_samples), main = "Trace Plot for Phi (Φ)")
 ```
 
+
+
 ## Bayesian Regression {.smaller}
 
 ### MCMC Results - Trace Plot of Spatial Process Parameters - σ²
+
+
 
 ```{r}
 trace_sigma <- traceplot(as.mcmc(sigma_samples), main = "Trace Plot for Sigma (σ²)")
 ```
 
+
+
 ## Bayesian Regression {.smaller}
 
 ### MCMC Results - Trace Plot of Spatial Process Parameters - τ²
 
+
+
 ```{r}
 trace_tau <- traceplot(as.mcmc(tau_samples), main = "Trace Plot for Tau (τ²)")
 ```
+
+
 
 ## Bayesian Regression {.smaller}
 
@@ -815,25 +917,37 @@ The trace plots for key spatial process parameters (Φ, σ², τ²) flatten out 
 
 ### MCMC Results - Autocorrelation of Spatial Process Parameter - Φ
 
+
+
 ```{r}
 autocorr_phi <- autocorr.plot(as.mcmc(theta.samples[, "phi"]), main = "Autocorrelation for Phi (Φ)")
 ```
+
+
 
 ## Bayesian Regression {.smaller}
 
 ### MCMC Results - Autocorrelation of Spatial Process Parameter - σ²
 
+
+
 ```{r}
 autocorr_sigma <- autocorr.plot(as.mcmc(theta.samples[, "sigma.sq"]), main = "Autocorrelation for Sigma (σ²)")
 ```
+
+
 
 ## Bayesian Regression {.smaller}
 
 ### MCMC Results - Autocorrelation of Spatial Process Parameter - τ²
 
+
+
 ```{r}
 autocorr_tau <- autocorr.plot(as.mcmc(theta.samples[, "tau.sq"]), main = "Autocorrelation for Tau (τ²)")
 ```
+
+
 
 ## Bayesian Regression {.smaller}
 
@@ -842,6 +956,8 @@ autocorr_tau <- autocorr.plot(as.mcmc(theta.samples[, "tau.sq"]), main = "Autoco
 The autocorrelation plots for Φ and σ² show similar trends, with both parameters exhibiting a slow decay in autocorrelation, indicating moderate dependence between successive samples. This suggests reasonable mixing for these parameters. However, for τ², the autocorrelation decays to a lower value of 0.25, indicating slower mixing and stronger dependence between samples. This slower decay for τ² suggests the chain may be struggling to effectively explore the parameter space for this parameter, potentially due to strong correlations with other parameters or insufficient mixing.
 
 # Group Challenge 3 {.center}
+
+
 
 ```{r lib, echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -876,9 +992,13 @@ coords_mat <- as.matrix(coords_jittered)
 colnames(coords_mat) <- NULL
 ```
 
+
+
 ## Jittering {.smaller}
 
 Formal Jittering. We set for 0.03 as standard deviation.
+
+
 
 ```{r map, echo=FALSE}
 bangladesh_map <- map_data("world", region = "Bangladesh")
@@ -908,9 +1028,13 @@ if (requireNamespace("patchwork", quietly = TRUE)) {
 }
 ```
 
+
+
 ## Regression {.smaller}
 
 We run a linear model with the 4 covariates for future initial parameters setting.
+
+
 
 ```{r lm, echo=FALSE}
 birth_type_dummy <- ifelse(reg_data$birth_weight_type == "mother recall", 1, 0)  
@@ -929,7 +1053,11 @@ cat(paste0("B₀: ", round(beta_hat[1], 3), ", ",
     paste0("B", 1:length(beta_hat[-1]), ": ", round(beta_hat[-1], 3), collapse = ", ")))
 ```
 
+
+
 ## MGP Fitting {.smaller}
+
+
 
 ```{r mgp, echo=FALSE}
 # This part is only for the significant covariates
@@ -971,7 +1099,11 @@ if (file.exists("data/output/mgp_fit_results.RData")) {
 }
 ```
 
+
+
 ## MGP Trace and Density Plots for Regression Coefficients (β1) {.smaller}
+
+
 
 ```{r plot, echo=FALSE}
 beta_mcmc <- gp_fit$beta_mcmc
@@ -996,7 +1128,11 @@ plot(density(beta_mat[i, ], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## MGP Trace and Density Plots for Regression Coefficients (β2) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1012,7 +1148,11 @@ plot(density(beta_mat[i, ], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## MGP Trace and Density Plots for Regression Coefficients (β3) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1028,7 +1168,11 @@ plot(density(beta_mat[i, ], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## MGP Trace and Density Plots for Regression Coefficients (β4) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1044,7 +1188,11 @@ plot(density(beta_mat[i, ], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## MGP Trace and Density Plots for Hyperparameters (τ²) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1059,7 +1207,11 @@ plot(density(tausq_mcmc[1, ], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## MGP Trace and Density Plots for Hyperparameters (φ) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1074,7 +1226,11 @@ plot(density(phi_chain, adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## MGP Trace and Density Plots for Hyperparameters (σ²) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1089,9 +1245,13 @@ plot(density(sigmasq_chain, adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## MGP Trace and Density Plots - Analysis
 
 The convergence is reached after approximately 6,000 iterations, so we ran for 28,000 iterations and burn the first 8,000. We initialize the regression coefficients ($\beta$) from the linear regression with the covariates we are interested in.
+
+
 
 ```{r save mcmc, echo=FALSE}
 # Extract
@@ -1118,7 +1278,11 @@ write.csv(lambda_df, "data/output/lambda_mcmc.csv", row.names = FALSE)
 write.csv(theta_df, "data/output/theta_mcmc.csv", row.names = FALSE)
 ```
 
+
+
 ## Posterior Predictive Map {.smaller}
+
+
 
 ```{r prediction, echo=FALSE, message=FALSE}
 library(tidyverse)
@@ -1154,7 +1318,11 @@ ggplot() +
   theme_minimal()
 ```
 
+
+
 ## Empirical Spatial Variogram {.smaller}
+
+
 
 ```{r variogram, echo=FALSE, message=FALSE, warning=FALSE}
 library(sp)
@@ -1176,14 +1344,22 @@ library(spBayes)
 set.seed(123)
 ```
 
+
+
 ## Nonspatial Linear Regression {.smaller}
+
+
 
 ```{r}
 linear_reg_notspatial <- lm(birth_weight ~ birth_weight_type + mother_bmi + sex_of_child + mother_current_age, data = reg_data)
 summary(linear_reg_notspatial)
 ```
 
+
+
 ## Spatial Nearest Neighbor Gaussian Process {.smaller}
+
+
 
 ```{r}
 #install.packages("spNNGP")
@@ -1232,7 +1408,11 @@ fit_nngp <- spNNGP(
 summary(fit_nngp)
 ```
 
+
+
 ## NNGP Trace and Density Plots for Regression Coefficients (β1) {.smaller}
+
+
 
 ```{r}
 beta_mcmc <- fit_nngp$p.beta.samples               # [2000 × p, p = 5]
@@ -1256,7 +1436,11 @@ par(mfrow = c(1, 1))
 ```
 
 
+
+
 ## NNGP Trace and Density Plots for Regression Coefficients (β2) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1272,7 +1456,11 @@ plot(density(beta_mcmc[, i], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## NNGP Trace and Density Plots for Regression Coefficients (β3) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1288,7 +1476,11 @@ plot(density(beta_mcmc[, i], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## NNGP Trace and Density Plots for Regression Coefficients (β4) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1304,7 +1496,11 @@ plot(density(beta_mcmc[, i], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## NNGP Trace and Density Plots for Regression Coefficients (β5) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1320,11 +1516,15 @@ plot(density(beta_mcmc[, i], adjust = 1),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## NNGP Trace and Density Plots for Regression Coefficients (β) - Analysis {.smaller}
 
 The trace plots for the $\beta$ parameters illustrate that after an initial burn-in period the chains stabilize and fluctuate around a fixed mean, indicating good mixing and convergence. Corresponding density plots show smooth, unimodal distributions for each coefficient, which suggests that the posterior estimates for the fixed effects are reliable
 
 ## NNGP Trace and Density Plots for Hyperparameters (φ) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1343,7 +1543,11 @@ plot(density(theta_mcmc[, param]), main = paste("Density:", param),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## NNGP Trace and Density Plots for Hyperparameters (σ²) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1359,7 +1563,11 @@ plot(density(theta_mcmc[, param]), main = paste("Density:", param),
      xlab = "Value", ylab = "Density")
 ```
 
+
+
 ## NNGP Trace and Density Plots for Hyperparameters (τ²) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1378,11 +1586,15 @@ plot(density(theta_mcmc[, param]), main = paste("Density:", param),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## NNGP Trace and Density Plots for Hyperparameters - Analysis {.smaller}
 
 For the spatial decay parameter (φ) and variance components (σ² for the spatial process and τ² for the nugget), the trace plots demonstrate that the chains converge after a burn-in period. The density plots reveal that although φ exhibits some right skew (with a long tail), all hyperparameters exhibit unimodal posterior distributions. This indicates that the model has successfully explored the parameter space and reached a stable posterior distribution.
 
 ## Trace and Density Plots for Selected Latent Spatial Effects (w(1131)) {.smaller}
+
+
 
 ```{r}
 set.seed(2369)
@@ -1410,7 +1622,11 @@ par(mfrow = c(1, 1))
 
 ```
 
+
+
 ## Trace and Density Plots for Selected Latent Spatial Effects (w(397)) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1433,7 +1649,11 @@ plot(density(w_mcmc[i, ]),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## Trace and Density Plots for Selected Latent Spatial Effects (w(318)) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1456,7 +1676,11 @@ par(mfrow = c(1, 1))
 
 ```
 
+
+
 ## Trace and Density Plots for Selected Latent Spatial Effects (w(266)) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1478,7 +1702,11 @@ plot(density(w_mcmc[i, ]),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## Trace and Density Plots for Selected Latent Spatial Effects (w(1354)) {.smaller}
+
+
 
 ```{r}
 # Set up the plotting layout to show two plots side by side
@@ -1501,9 +1729,13 @@ plot(density(w_mcmc[i, ]),
 par(mfrow = c(1, 1))
 ```
 
+
+
 ## Trace and Density Plots for Selected Latent Spatial Effects - Analysis {.smaller}
 
 The trace plots for the latent spatial effect w(s) at selected locations show stable fluctuations over the MCMC iterations, with no evident trends or abrupt jumps, which confirms convergence. Their density plots, while showing some variability across locations, are generally smooth and unimodal. This implies that the spatial random effects are well‐estimated at the individual locations.
+
+
 
 ```{r}
 beta_df <- as.data.frame(beta_mcmc)
@@ -1517,7 +1749,11 @@ write.csv(beta_df, "data/output/nngp_beta_samples.csv", row.names = FALSE)
 write.csv(theta_df, "data/output/nngp_theta_samples.csv", row.names = FALSE)
 ```
 
+
+
 ## Posterior Predictive Map at Observed Locations {.smaller}
+
+
 
 ```{r}
 library(sf)
@@ -1542,11 +1778,15 @@ ggplot() +
   theme_minimal()
 ```
 
+
+
 ## Posterior Predictive Map at Observed Locations {.smaller}
 
 This map displays the posterior predictive distribution for the observed locations, derived from one selected draw (or the posterior mean) of the y_rep samples. The color scale represents the predicted birth weight values. The relatively uniform distribution of colors (without large-scale gradients) suggests that the NNGP model has effectively accounted for spatial variation in the observed response
 
 ## Empirical Variogram of Posterior Predictive Values {.smaller}
+
+
 
 ```{r}
 library(gstat)
@@ -1563,7 +1803,11 @@ plot(vg$dist_km, vg$gamma, type = "l",
      main = "Empirical Spatial Variogram (Observed Points)")
 ```
 
+
+
 ## Residuals Variogram of Posterior Predictive Values {.smaller}
+
+
 
 ```{r}
 residuals <- reg_data$birth_weight - reg_data$yhat  # y - E(y)
@@ -1581,11 +1825,15 @@ plot(vg_resid$dist_km, vg_resid$gamma, type = "l",
      main = "Residuals Variogram (Observed Points)")
 ```
 
+
+
 ## Residuals Variogram of Posterior Predictive Values {.smaller}
 
 The variogram of the model residuals displays a moderate increase at medium distances before leveling off. This pattern indicates that while most of the spatial dependence has been accounted for by the model, some minor spatial correlation remains among nearby observations. However, the overall level of semivariance does not continue to increase with distance, which supports the conclusion that the residual spatial autocorrelation is weak and likely due to random variability rather than a systematic bias. We see the sharp drop of semivariance when distance is greater than 200, this is due to the limited data at large distance.
 
 ## Estimated Latent Process w(s) {.smaller}
+
+
 
 ```{r}
 reg_data$w_mean <- rowMeans(fit_nngp$p.w.samples)
@@ -1603,11 +1851,15 @@ ggplot() +
   theme_minimal()
 ```
 
+
+
 ## Estimated Latent Process w(s) {.smaller}
 
 The map clearly illustrates the spatial heterogeneity in the latent field, highlighting areas where the model detects higher or lower spatial effects. This visualization helps in interpreting the spatial structure that the NNGP model has captured beyond what is explained by the covariates.
 
 ## Empirical Variogram of the Estimated Latent Process w(s) {.smaller}
+
+
 
 ```{r}
 reg_data_proj <- st_transform(reg_data_sf, crs = 32646)
@@ -1619,6 +1871,9 @@ plot(vg_w$dist_km, vg_w$gamma, type = "l",
      main = "Empirical Variogram of w(s)")
 ```
 
+
+
 ## Empirical Variogram of the Estimated Latent Process w(s) {.smaller}
 
 The latent spatial process w(s) exhibits some small-scale variability near neighboring locations, causing the semivariance to be unexpectedly high at very short lags. As distance increases, the semivariance declines and fluctuates, indicating that the spatial correlation in w(s) is relatively short-ranged.
+
