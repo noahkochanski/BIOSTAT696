@@ -1421,10 +1421,10 @@ for (i in sample_idx) {
   # Trace plot for the location
   final_plot <- final_plot %>%
     add_trace(x = 1:n_iter, y = w_mcmc[i, ], type = "scatter", mode = "lines",
-              name = paste("Trace: w(s) at location", i), line = list(color = 'blue'), visible = i == sample_idx[1]) %>%
+              name = paste("Trace: w(", i, ")"), line = list(color = 'blue'), visible = i == sample_idx[1]) %>%
     # Density plot for the location
     add_trace(x = density(w_mcmc[i, ])$x, y = density(w_mcmc[i, ])$y, type = "scatter", mode = "lines",
-              name = paste("Density: w(s) at location", i), line = list(color = 'red'), visible = FALSE)
+              name = paste("Density: w(", i, ")"), line = list(color = 'red'), visible = FALSE)
 }
 
 # Total number of traces = 2 per location (trace and density)
@@ -1470,8 +1470,8 @@ final_plot <- final_plot %>%
       )
     ),
     title = "Trace and Density Plots for w(s) at Sampled Locations",
-    xaxis = list(title = "Iteration"),
-    yaxis = list(title = "w(s) / Density"),
+    xaxis = list(title = "Iteration / Value"),
+    yaxis = list(title = "Value / Density"),
     autosize = FALSE,
     width = 1000,
     height = 450,
