@@ -1,2 +1,6 @@
 #OS junk files
 .DS_Store
+
+#Ignore output files
+data/output/*
+!data/output/.gitkeep
