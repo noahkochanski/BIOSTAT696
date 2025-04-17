@@ -1,0 +1,218 @@
+---
+title: "BIOSTAT696 DAG-GP with BMI, Sex, Wealth"
+author: "Andy Guo"
+date: "2025-04-02"
+output: pdf_document
+---
+
+```{r lib, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(glmnet)
+library(coda)
+library(meshed)
+library(ggplot2)
+library(maps)
+library(viridis)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+```
+
+```{r}
+birth_imp <- readRDS('BIOSTAT696/data/input/birth_imp.RDS')
+cluster_locations <- read_csv('BIOSTAT696/data/input/cluster_locations.csv') %>%
+  rename(clusterid = DHSCLUST) %>%
+  select(clusterid, LATNUM, LONGNUM)
+
+reg_data <- left_join(birth_imp, cluster_locations, by = "clusterid")
+```
+
+```{r}
+set.seed(2025)
+
+coords_orig <- reg_data %>%
+  select(LATNUM, LONGNUM) %>%
+  rename(Latitude = LATNUM, Longitude = LONGNUM)
+
+coords_jittered <- coords_orig %>%
+  mutate(
+    Latitude = Latitude + rnorm(n(), mean = 0, sd = 0.03),
+    Longitude = Longitude + rnorm(n(), mean = 0, sd = 0.03)
+  )
+
+coords_mat <- as.matrix(coords_jittered)
+colnames(coords_mat) <- NULL
+```
+
+
+```{r}
+sex_dummy <- ifelse(reg_data$sex_of_child == "male", 1, 0)
+
+X_selected_df <- data.frame(
+  mother_bmi = reg_data$mother_bmi,
+  sex_of_child_male = sex_dummy,
+  wealth_index = reg_data$wealth_index
+)
+
+y <- reg_data$birth_weight
+X_selected <- as.matrix(cbind(Intercept = 1, X_selected_df))
+colnames(X_selected) <- NULL
+```
+
+# DAG Based GP
+
+```{r}
+set.seed(20250402)
+
+gp_fit <- spmeshed(
+  y = y/1000,
+  x = X_selected,
+  coords = coords_mat,
+  family = "gaussian",
+  n_samples = 10000,
+  n_burnin = 5000,
+  n_thin = 1,
+  n_threads = 4,
+  verbose = 100,
+
+  prior = list(
+    tausq = c(2, 1),
+    sigmasq = c(2, 0.01),
+    phi = c(1, 15)
+  ),
+  starting = list(tausq = 10)
+)
+```
+
+```{r}
+beta_mcmc <- gp_fit$beta_mcmc      # (p, q, n_iter)
+tausq_mcmc <- gp_fit$tausq_mcmc    # (q, n_iter)
+lambda_mcmc <- gp_fit$lambda_mcmc  # (q, k, n_iter)
+theta_mcmc <- gp_fit$theta_mcmc    # (h, k, n_iter)
+```
+
+```{r}
+beta_df <- as.data.frame(t(matrix(beta_mcmc[, 1, ], nrow = dim(beta_mcmc)[1])))
+colnames(beta_df) <- c("intercept", "beta_bmi", "beta_sex", "beta_wealth")
+
+tausq_df <- as.data.frame(t(tausq_mcmc))
+colnames(tausq_df) <- "tausq"
+
+phi_vec <- theta_mcmc[1, 1, ]
+sigmasq_vec <- lambda_mcmc[1, 1, ]^2  # Correct extraction for sigma^2 in univariate case
+
+theta_df <- data.frame(
+  phi = phi_vec,
+  sigmasq = sigmasq_vec
+)
+
+iter <- seq_len(nrow(beta_df))
+beta_df$iter <- iter
+tausq_df$iter <- iter
+theta_df$iter <- iter
+
+write.csv(beta_df, "beta_1_mgp.csv", row.names = FALSE)
+write.csv(tausq_df, "tausq_1_mgp.csv", row.names = FALSE)
+write.csv(theta_df, "theta_1_mgp.csv", row.names = FALSE)
+```
+
+```{r}
+for (i in 1:4) {
+  plot(1:nrow(beta_df), beta_df[[i]], type = "l",
+       main = paste("Trace: ", colnames(beta_df)[i]), xlab = "Iteration", ylab = "Value")
+  plot(density(beta_df[[i]]), main = paste("Density: ", colnames(beta_df)[i]))
+}
+
+plot(1:nrow(tausq_df), tausq_df$tausq, type = "l", main = "Trace: tausq", xlab = "Iteration", ylab = "Value")
+plot(density(tausq_df$tausq), main = "Density: tausq")
+
+plot(1:nrow(theta_df), theta_df$phi, type = "l", main = "Trace: phi", xlab = "Iteration", ylab = "Value")
+plot(density(theta_df$phi), main = "Density: phi")
+
+plot(1:nrow(theta_df), theta_df$sigmasq, type = "l", main = "Trace: sigmasq", xlab = "Iteration", ylab = "Value")
+plot(density(theta_df$sigmasq), main = "Density: sigmasq")
+```
+
+```{r}
+combined_df <- beta_df %>%
+  select(-iter) %>%
+  bind_cols(tausq_df %>% select(-iter), theta_df %>% select(-iter)) %>%
+  pivot_longer(cols = everything(), names_to = "parameter", values_to = "value")
+
+params <- unique(combined_df$parameter)
+
+for (param in params) {
+  ggplot(filter(combined_df, parameter == param), aes(x = "", y = value)) +
+    geom_boxplot(outlier.shape = NA, fill = "lightblue") +
+    stat_summary(fun = mean, geom = "point", shape = 20, color = "red", size = 2) +
+    labs(title = paste("Boxplot for", param),
+         y = "Value", x = "") +
+    theme_minimal() +
+    coord_flip() -> p
+  print(p)
+}
+```
+
+```{r}
+dag_coords <- gp_fit$coordsdata  # all locations used in the DAG
+
+ggplot() +
+  geom_point(data = as.data.frame(dag_coords), aes(x = Var2, y = Var1), size = 0.5) +
+  labs(title = "MGP DAG Grid Locations", x = "Longitude", y = "Latitude") +
+  coord_fixed() +
+  theme_minimal()
+```
+
+
+```{r}
+forced_idx <- which(gp_fit$coordsdata[, 3] == 1)
+
+yhat_mat <- sapply(gp_fit$yhat_mcmc, function(mat) mat[, 1])
+yhat_median_all <- apply(yhat_mat, 1, median)
+yhat_median_forced <- yhat_median_all[forced_idx]
+
+beta_medians <- apply(beta_mcmc[, 1, ], 1, median)
+names(beta_medians) <- c("intercept", "bmi", "sex", "wealth")
+
+median_bmi <- median(reg_data$mother_bmi, na.rm = TRUE)
+male_dummy <- 1
+wealth_level1 <- 1
+
+fixed_effect_contrib <- beta_medians["intercept"] +
+                        beta_medians["bmi"] * median_bmi +
+                        beta_medians["sex"] * male_dummy +
+                        beta_medians["wealth"] * wealth_level1
+
+prediction1 <- (yhat_median_forced + fixed_effect_contrib) * 1000
+
+coords_df <- as.data.frame(gp_fit$coordsdata)
+colnames(coords_df) <- c("Latitude", "Longitude", "forced")
+forced_grid_df <- coords_df[forced_idx, ]
+forced_grid_df$prediction1 <- prediction1
+
+ggplot(forced_grid_df, aes(x = Longitude, y = Latitude, color = prediction1)) +
+  geom_point(size = 1.2, alpha = 0.8) +
+  scale_color_viridis(option = "C", name = "Prediction1\n(Birth Weight, g)") +
+  coord_sf(xlim = c(88, 93), ylim = c(21, 27)) +
+  labs(title = "Prediction1 of MGP at Standard Covariate Level",
+       x = "Longitude", y = "Latitude") +
+  theme_minimal()
+
+```
+
+```{r}
+forced_sf <- st_as_sf(forced_grid_df, coords = c("Longitude", "Latitude"), crs = 4326)
+
+forced_sf_in_bgd <- forced_sf[st_within(forced_sf, bangladesh, sparse = FALSE)[, 1], ]
+
+ggplot() +
+  geom_sf(data = bangladesh, fill = "gray90", color = "black") +
+  geom_sf(data = forced_sf_in_bgd, aes(color = prediction1), size = 1.2, alpha = 0.8) +
+  scale_color_viridis(option = "C", name = "Prediction1\n(Birth Weight, g)") +
+  coord_sf(xlim = c(88, 93), ylim = c(21, 27)) +
+  labs(title = "Prediction1 of MGP at Standard Covariate Level",
+       x = "Longitude", y = "Latitude") +
+  theme_minimal()
+
+```

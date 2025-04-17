@@ -1,0 +1,144 @@
+---
+title: "Vecchia (GPGP)"
+author: "Mattias Blum"
+date: "2025-04-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+set.seed(2025)
+
+birth_imp = readRDS('data/input/birth_imp.RDS')
+cluster_locations = read.csv('data/input/cluster_locations.csv')
+
+birth_imp$LAT <- cluster_locations$LATNUM[match(birth_imp$clusterid, cluster_locations$DHSCLUST)] 
+birth_imp$LONG <- cluster_locations$LONGNUM[match(birth_imp$clusterid, cluster_locations$DHSCLUST)]
+
+jitter_sd <- 0.03
+birth_imp$LAT_jitter <- birth_imp$LAT + rnorm(nrow(birth_imp), 0, jitter_sd)
+birth_imp$LONG_jitter <- birth_imp$LONG + rnorm(nrow(birth_imp), 0, jitter_sd)
+
+locs <- as.matrix(birth_imp[, c("LONG_jitter", "LAT_jitter")])
+```
+
+```{r}
+library(GpGp)
+
+# Covariates (sex_of_child should be a factor or encoded appropriately)
+X <- model.matrix(~ mother_bmi + wealth_index + sex_of_child, data = birth_imp)
+
+# Target
+y <- birth_imp$birth_weight
+
+
+# Fit the GP using Vecchia approximation with exponential covariance
+fit <- fit_model(
+  y = y,
+  locs = locs,
+  X = X,
+  covfun_name = "exponential_isotropic"
+)
+
+# View summary of the fitted model
+summary(fit)
+```
+```{r}
+# 95% Confidence Interval multiplier
+z_val <- qnorm(0.975)
+
+# --- Covariance Parameters ---
+cov_names <- c("Variance (σ²)", "Range (θ)", "Nugget")
+cov_estimates <- fit$covparms
+
+# Approximate standard errors using the inverse Fisher Information Matrix
+cov_se <- sqrt(diag(solve(fit$info)))
+
+cov_lci <- cov_estimates - z_val * cov_se
+cov_uci <- cov_estimates + z_val * cov_se
+
+# --- Beta Parameters ---
+beta_names <- colnames(X)  # use model matrix column names
+beta_estimates <- fit$betahat
+beta_se <- fit$sebeta
+
+beta_lci <- beta_estimates - z_val * beta_se
+beta_uci <- beta_estimates + z_val * beta_se
+
+# --- Combine into a data.frame ---
+param_df <- data.frame(
+  param_name = c(cov_names, beta_names),
+  estimate = c(cov_estimates, beta_estimates),
+  Lower_CI = c(cov_lci, beta_lci),
+  Upper_CI = c(cov_uci, beta_uci)
+)
+
+# --- Export to CSV ---
+write.csv(param_df, "parameter_estimates.csv", row.names = FALSE)
+
+```
+
+```{r}
+# In-sample predictions using the low-level predictions() function
+y_pred <- predictions(
+  fit = fit,
+  locs_pred = locs,
+  X_pred = X,
+  y_obs = fit$y,
+  locs_obs = fit$locs,
+  X_obs = fit$X,
+  reorder = FALSE
+)
+
+# Compute MSE
+mse <- mean((y - y_pred)^2)
+
+# Print MSE
+print(mse)
+```
+
+```{r}
+library(tidyverse)
+library(meshed)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(viridis)
+
+# Coordinates and prediction data from the fitted model
+coords_grid <- birth_imp  # Assuming `birth_imp` holds your data
+coords_sf <- st_as_sf(coords_grid, coords = c("LONG_jitter", "LAT_jitter"), crs = 4326)
+
+# Bangladesh map
+bangladesh <- ne_countries(scale = "medium", country = "Bangladesh", returnclass = "sf")
+
+# Filter coordinates within Bangladesh
+coords_in_bgd <- coords_sf[st_within(coords_sf, bangladesh, sparse = FALSE), ]
+coords_in_bgd_df <- coords_in_bgd %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  rename(Longitude = X, Latitude = Y) %>%
+  mutate(index = as.integer(rownames(coords_in_bgd)))
+
+# Update the coords_grid with predictions
+coords_grid$index <- 1:nrow(coords_grid)
+coords_grid$yhat <- y_pred
+
+# Merge prediction data with coordinates inside Bangladesh
+plot_data <- coords_grid %>%
+  inner_join(coords_in_bgd_df, by = "index")
+
+# Plot the results
+ggplot() +
+  geom_sf(data = bangladesh, fill = "gray90", color = "black") +
+  geom_point(data = plot_data, aes(x = Longitude, y = Latitude, color = yhat),
+             size = 1.2, alpha = 0.8) +
+  scale_color_viridis(option = "C", name = "Predicted\nBirth Weight") +
+  coord_sf(xlim = c(88, 93), ylim = c(21, 27)) +
+  labs(title = "Predicted Birth Weight using Vecchia Approximation",
+       x = "Longitude", y = "Latitude") +
+  theme_minimal()
+```

@@ -1,0 +1,329 @@
+---
+title: "nngp"
+author: "Jinxiang Ma"
+date: "2025-04-03"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(spBayes)
+set.seed(123)
+```
+
+```{r}
+birth_imp <- readRDS('birth_imp.RDS')
+cluster_locations <- read_csv('cluster_locations.csv') %>% rename(clusterid = DHSCLUST) %>% select(clusterid, LATNUM, LONGNUM)
+reg_data <- left_join(birth_imp, cluster_locations)
+
+linear_reg_notspatial <- lm(birth_weight ~ birth_weight_type + mother_bmi + sex_of_child + wealth_index, data = reg_data)
+summary(linear_reg_notspatial)
+
+res <- residuals((linear_reg_notspatial))
+
+residual_data <- reg_data %>% 
+  select(LATNUM, LONGNUM) %>%
+  mutate(resid = res, 
+         across(c(LATNUM, LONGNUM), round, digits = 3))
+         
+residual_data %>%
+  ggplot(aes(x = LONGNUM, y = LATNUM, color = resid)) + 
+  geom_point(position = "jitter")+ 
+  scale_color_viridis_c()
+```
+
+
+```{r}
+#install.packages("spNNGP")
+library(spNNGP)
+```
+
+```{r}
+######
+
+set.seed(2025)
+coords <- reg_data %>%
+  mutate(
+    LATNUM_jitter = LATNUM + rnorm(n(), sd = 0.03),
+    LONGNUM_jitter = LONGNUM + rnorm(n(), sd = 0.03)
+  ) %>%
+  select(LONGNUM_jitter, LATNUM_jitter) %>%
+  mutate(LATNUM_jitter = (LATNUM_jitter - min(LATNUM_jitter))/(max(LATNUM_jitter) - min(LATNUM_jitter)),
+         LONGNUM_jitter = (LONGNUM_jitter - min(LONGNUM_jitter))/(max(LONGNUM_jitter) - min(LONGNUM_jitter))) %>%
+  as.matrix()
+```
+
+```{r}
+nrow(reg_data)
+```
+We inform the prior using the information from GPGP marginalized likelihood.
+```{r}
+n.samples = 10000
+starting = list("phi" = 6, "sigma.sq" = 1, "tau.sq" = 1)
+priors <- list("phi.Unif" = c(5, 10), "sigma.sq.IG" = c(2, 2),"tau.sq.IG" = c(2, 0.01))
+cov.model <- "exponential"
+tuning <- list("phi" = 0.15)
+if("order.maxmin" %in% ls("package:spNNGP")) {
+  ord <- order.maxmin(coords)
+} else {
+  ord <- order(coords[,1] + coords[,2])
+}
+
+burn_in <- 5000            
+thin_val <- 2
+```
+
+```{r}
+fit_nngp <- spNNGP(
+  birth_weight ~ mother_bmi + sex_of_child + wealth_index,
+  data = reg_data,
+  coords = coords,
+  method = "latent",
+  n.neighbors = 10,
+  starting = starting,
+  tuning = tuning,
+  priors = priors,
+  cov.model = cov.model,
+  n.samples = n.samples,
+  n.omp.threads = 4,
+  fit.rep = TRUE,
+  sub.sample = list(start = burn_in + 1, thin = thin_val),
+  return.neighbor.info = TRUE
+)
+```
+
+```{r}
+summary(fit_nngp)
+```
+
+
+```{r}
+beta_mcmc <- fit_nngp$p.beta.samples               # [10000 × p, p = 4]
+theta_mcmc <- fit_nngp$p.theta.samples             # [10000 × 3], phi, sigma^2, tau^2
+colnames(theta_mcmc) <- c("phi", "sigma_sq", "tau_sq")
+
+n_iter <- nrow(beta_mcmc)
+p <- ncol(beta_mcmc)
+
+```
+
+### NNGP Trace and Density Plots for Regression Coefficients (β)
+```{r}
+beta_names <- c("Intercept", "mother_bmi", "sex_of_childmale", "wealth_index")
+for (i in 1:p) {
+  plot(1:n_iter, beta_mcmc[, i], type = "l",
+       main = paste("Trace of Beta", i, "(", beta_names[i], ")"),
+       xlab = "Iteration", ylab = "Value")
+
+  plot(density(beta_mcmc[, i], adjust = 1),
+       main = paste("Density of Beta", i, "(", beta_names[i], ")"),
+       xlab = "Value", ylab = "Density")
+}
+```
+
+
+
+
+### NNGP Trace and Density Plots for Hyperparameters (φ, σ², τ²)
+```{r}
+for (param in colnames(theta_mcmc)) {
+  # Trace
+  plot(1:n_iter, theta_mcmc[, param], type = "l",
+       main = paste("Trace:", param), xlab = "Iteration", ylab = "Value")
+  # Density
+  plot(density(theta_mcmc[, param]), main = paste("Density:", param),
+       xlab = "Value", ylab = "Density")
+}
+```
+
+
+
+
+### Trace and Density Plots for Selected Latent Spatial Effects (w(s))
+```{r}
+sample_idx <- sample(1:nrow(fit_nngp$p.w.samples), 5) 
+w_mcmc <- fit_nngp$p.w.samples  # [n_locations × n_iter]
+n_iter <- ncol(w_mcmc)
+
+for (i in sample_idx) {
+  plot(1:n_iter, w_mcmc[i, ], type = "l",
+       main = paste("Trace: w(s) at location", i),
+       xlab = "Iteration", ylab = "w(s)")
+}
+```
+
+
+```{r}
+for (i in sample_idx) {
+  plot(density(w_mcmc[i, ]), 
+       main = paste("Density: w(s) at location", i),
+       xlab = "Value", ylab = "Density")
+}
+```
+
+
+### Output Result to CSV
+```{r}
+beta_df <- as.data.frame(beta_mcmc)
+colnames(beta_df) <- paste0("beta", 1:p)
+beta_df$iter <- 1:n_iter
+
+theta_df <- as.data.frame(theta_mcmc)
+theta_df$iter <- 1:n_iter
+
+write.csv(beta_df, "nngp_beta_samples.csv", row.names = FALSE)
+write.csv(theta_df, "nngp_theta_samples.csv", row.names = FALSE)
+```
+
+
+```{r}
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(viridis)
+```
+
+
+```{r}
+#Pred from the posterior predictive distribution
+yrep_last <- fit_nngp$y.rep.samples[, 750]
+reg_data$yhat <- yrep_last
+reg_data$coords <- coords
+coords_sf <- st_as_sf(reg_data, coords = c("LONGNUM", "LATNUM"), crs = 4326)
+bangladesh <- ne_countries(scale = "medium", country = "Bangladesh", returnclass = "sf")
+
+```
+
+
+
+
+### Prediction Heatmap
+```{r}
+library(rnaturalearth)
+library(sf)
+
+bangladesh <- ne_countries(country = "Bangladesh", returnclass = "sf")
+```
+
+```{r}
+library(dplyr)
+library(sp)
+library(raster)
+
+
+grid <- st_make_grid(bangladesh, cellsize = 0.1, what = "centers")  
+grid <- st_sf(geometry = grid)
+
+grid_in_bd <- st_intersection(grid, bangladesh)
+
+
+coords_pred <- st_coordinates(grid_in_bd)
+```
+
+```{r}
+
+bmi_median <- median(reg_data$mother_bmi, na.rm = TRUE)
+
+
+X_pred <- model.matrix(
+  ~ mother_bmi + sex_of_child + wealth_index,
+  data = data.frame(
+    mother_bmi = bmi_median,
+    sex_of_child = 0,
+    wealth_index = 1
+  )
+)
+
+X_pred <- X_pred[rep(1, nrow(coords_pred)), ]
+```
+
+
+```{r}
+pred_model <- predict(
+  fit_nngp,
+  X.0 = X_pred,
+  coords.0 = coords_pred,
+  n.omp.threads = 1
+)
+```
+
+```{r}
+pred_mean <- apply(pred_model$p.y.0, 1, mean)
+grid_in_bd$pred <- pred_mean
+```
+
+```{r}
+library(ggplot2)
+library(viridis)
+
+ggplot() +
+  geom_sf(data = grid_in_bd, aes(color = pred), size = 1) +
+  scale_color_viridis(name = "Predicted\nBirth Weight", option = "C") +
+  theme_minimal() +
+  labs(title = "NNGP Predicted Birth Weight") +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9)
+  )
+```
+
+
+
+```{r}
+df_grid <- data.frame(
+  lon = coords_pred[, 1],
+  lat = coords_pred[, 2],
+  pred = pred_mean
+)
+
+ggplot(df_grid, aes(x = lon, y = lat, fill = pred)) +
+  geom_tile() +
+  coord_equal() +
+  scale_fill_viridis_c(option = "C") +
+  labs(title = "NNGP Predicted Birth Weight (Heatmap)",
+       x = "Longitude", y = "Latitude", fill = "Predicted Birth Weight") +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9)
+  )
+```
+
+```{r}
+
+fitted_mean <- rowMeans(fit_nngp$y.hat.samples)
+
+residuals_nngp <- reg_data$birth_weight - fitted_mean
+```
+
+
+```{r}
+library(gstat)
+library(sp)
+
+resid_std <- residuals_nngp
+resid_df <- data.frame(
+  lon = reg_data$LONGNUM,
+  lat = reg_data$LATNUM,
+  resid = resid_std
+)
+
+
+resid_sf <- st_as_sf(resid_df, coords = c("lon", "lat"), crs = 4326)
+resid_utm <- st_transform(resid_sf, crs = 32646)
+resid_sp <- as(resid_utm, "Spatial")
+vgm_emp <- variogram(resid ~ 1, data = resid_sp)
+vgm_emp$dist <- vgm_emp$dist / 1000
+plot(vgm_emp, main = "Empirical Semivariogram for NNGP Model Residuals", type = "l",
+     xlab = "Distance (km)", ylab = "Semivariance",ylim = c(450000, 500000))
+```
+
+
+
